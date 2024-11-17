@@ -1,12 +1,39 @@
 import { serve } from '@hono/node-server';
-import { Hono } from 'hono';
-console.log(process.env.PORT);
+import { Hono, type Context } from 'hono';
+import authMiddleware from './middlewares/auth.middleware.js';
+import { sign } from 'hono/jwt';
+import connectDB from './configs/db.js';
+// Using dev
+import 'dotenv/config';
+const port = +(process.env.PORT as string);
 const app = new Hono();
-app.get('/', (c) => {
+
+app.get('/', (c: Context) => {
   return c.text('Hello Hono!');
 });
 
-app.notFound((c) => {
+app.post('/login', async (c: Context) => {
+  const { email, password } = await c.req.json();
+  if (email && password) {
+    // Dùng setSignedCookie để đặt time expired
+    const token = await sign({ email }, process.env.ACCESS_TOKEN_SECRET as string);
+    return c.json({ email, password, token });
+  } else {
+    return c.json({ message: 'Failed' });
+  }
+});
+
+app.get('/profile', authMiddleware, async (c: Context) => {
+  const profile = c.get('user');
+  return c.json({ profile });
+});
+
+app.post('/register', async (c: Context) => {
+  const { email, password } = await c.req.json();
+  return c.json({ email, password });
+});
+
+app.notFound((c: Context) => {
   c.status(404);
   // return c.text('404 Page Not Found', 404);
   return c.json({
@@ -15,16 +42,25 @@ app.notFound((c) => {
   });
 });
 
-app.onError((err, c) => {
+app.onError((err, c: Context) => {
   console.error(`${err}`);
   c.status(500);
   return c.text('Error Message', 500);
 });
 
-const port = 3000;
-console.log(`Server is running on http://localhost:${port}`);
-
-serve({
-  fetch: app.fetch,
-  port,
-});
+connectDB()
+  .then(() => {
+    serve(
+      {
+        fetch: app.fetch,
+        port,
+      },
+      (info) => {
+        // console.log(info);
+        console.log(`Server is running on http://localhost:${info.port}`);
+      },
+    );
+  })
+  .catch((err) => {
+    console.log(err);
+  });

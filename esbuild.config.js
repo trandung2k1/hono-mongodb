@@ -1,7 +1,9 @@
 import * as esbuild from 'esbuild';
 import 'dotenv/config';
 const define = {
-  'process.env.PORT': process.env.PORT,
+  'process.env.PORT': JSON.stringify(process.env.PORT),
+  'process.env.ACCESS_TOKEN_SECRET': JSON.stringify(process.env.ACCESS_TOKEN_SECRET),
+  'process.env.MONGODB_URI': JSON.stringify(process.env.MONGODB_URI),
 };
 
 esbuild
